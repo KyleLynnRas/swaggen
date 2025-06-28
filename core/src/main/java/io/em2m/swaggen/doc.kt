@@ -2,6 +2,7 @@ package io.em2m.swaggen
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties
 import com.fasterxml.jackson.annotation.JsonInclude
+import com.fasterxml.jackson.annotation.JsonProperty
 import com.fasterxml.jackson.databind.node.ObjectNode
 
 @JsonIgnoreProperties(ignoreUnknown = true)
@@ -46,10 +47,39 @@ data class Action(
     var produces: String?,
     var request: Request,
     var responses: Map<String, Response> = emptyMap(),
-    val response: Response? = null
-)
+    val response: Response? = null,
+    @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
+    var profiles: List<String> = emptyList()
+) {
+    fun hasProfile(profiles: Set<String>): Boolean {
+        var matches = false
+        profiles.forEach {
+            if (this.profiles.contains(it)) {
+                matches = true
+                return@forEach
+            }
+        }
+        return matches
+    }
+}
 
-data class Model(var name: String, var schema: ObjectNode)
+data class Model(
+    var name: String,
+    var schema: ObjectNode,
+    @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
+    var profiles: List<String> = emptyList()
+) {
+    fun hasProfile(profiles: Set<String>): Boolean {
+        var matches = false
+        profiles.forEach {
+            if (this.profiles.contains(it)) {
+                matches = true
+                return@forEach
+            }
+        }
+        return matches
+    }
+}
 
 data class Request(var schema: ObjectNode?, var model: String?, var headers: ObjectNode?)
 
