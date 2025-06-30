@@ -3,6 +3,7 @@ package io.em2m.swaggen
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.node.ObjectNode
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory
+import com.fasterxml.jackson.module.kotlin.convertValue
 import com.fasterxml.jackson.module.kotlin.readValue
 import com.fasterxml.jackson.module.kotlin.registerKotlinModule
 import java.io.File
@@ -45,9 +46,9 @@ class ServiceLoader() {
         val infoJson = File(src, "info.json")
 
         if (infoYml.isFile) {
-            service.info = loadInfo(infoYml)
+            service.info = loadInfo(src)
         } else if (infoJson.isFile) {
-            service.info = loadInfo(infoJson)
+            service.info = loadInfo(src)
         }
 
         if (actions.isDirectory) {
@@ -92,16 +93,21 @@ class ServiceLoader() {
 
     fun loadModel(src: File): Model {
         val schema: ObjectNode = mapper.readValue(src)
+        var profiles: List<String> = emptyList()
+        if (schema.has("profiles")) {
+            profiles = mapper.convertValue(schema.get("profiles")) ?: emptyList()
+        }
+        schema.remove("profiles")
         val name = nameFromFile(src)
-        return Model(name, schema)
+        return Model(name, schema, profiles)
     }
 
     fun filterProfiles(spec: Specification, profiles: Set<String>): Specification {
         return if (profiles.isNotEmpty()) {
             val services = spec.services.filter { it.info.hasProfile(profiles) }.map { service ->
                 val info = service.info
-                val actions = service.actions
-                val models = service.models
+                val actions = service.actions.filter { it.hasProfile(profiles) }.toMutableList()
+                val models = service.models.filter { it.hasProfile(profiles) }.toMutableList()
                 Service(service.name, info, actions, models)
             }.toMutableList()
             Specification(spec.info, services, spec.tags)
